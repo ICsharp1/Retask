@@ -14,17 +14,20 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
   final prefs = await SharedPreferences.getInstance();
   final notifications = FlutterLocalNotificationsPlugin();
   
   final storageService = StorageService(prefs);
   final notificationService = NotificationService(notifications);
 
+  final themeProvider = ThemeProvider(prefs);
+  await themeProvider.init();
+
   runApp(MyApp(
     storageService: storageService,
     notificationService: notificationService,
     prefs: prefs,
+    themeProvider: themeProvider,
   ));
 }
 
@@ -32,19 +35,21 @@ class MyApp extends StatelessWidget {
   final StorageService storageService;
   final NotificationService notificationService;
   final SharedPreferences prefs;
+  final ThemeProvider themeProvider;
 
   const MyApp({super.key, 
     required this.storageService,
     required this.notificationService,
     required this.prefs,
+    required this.themeProvider,
   });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (context) => ThemeProvider(prefs),
+        ChangeNotifierProvider<ThemeProvider>.value(
+          value: themeProvider,
         ),
         ChangeNotifierProvider(
           create: (context) => TaskProvider(
@@ -57,7 +62,7 @@ class MyApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) => MaterialApp(
           title: 'reTask',
-          theme: themeProvider.theme,
+          theme: themeProvider.currentTheme,
           initialRoute: '/',
           routes: {
             '/': (context) => const HomeScreen(),

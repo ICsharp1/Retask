@@ -252,9 +252,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
       final taskProvider = context.read<TaskProvider>();
       if (widget.taskToEdit != null) {
-        taskProvider.updateTask(widget.taskToEdit!, task);
+        taskProvider.updateTask(widget.taskToEdit!, task, context: context);
       } else {
-        taskProvider.addTask(task);
+        taskProvider.addTask(task, context: context);
       }
       Navigator.pop(context);
     }

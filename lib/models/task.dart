@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'step.dart';
 
 class Task {
   String title;
@@ -6,9 +7,10 @@ class Task {
   bool hasNotification;
   DateTime lastCompleted;
   DateTime nextDue;
-  bool isCompleted = false;
+  bool isCompleted;
   Color color;
   TimeOfDay? notificationTime;
+  List<TaskStep> steps;
 
   Task({
     required this.title,
@@ -16,9 +18,12 @@ class Task {
     this.hasNotification = false,
     required this.lastCompleted,
     required this.nextDue,
+    this.isCompleted = false,
     this.color = Colors.blue,
-    this.notificationTime,
-  });
+    TimeOfDay? notificationTime,
+    List<TaskStep>? steps,
+  }) : this.notificationTime = notificationTime ?? const TimeOfDay(hour: 10, minute: 0),
+       this.steps = steps ?? [];
 
   Map<String, dynamic> toJson() {
     return {
@@ -32,6 +37,7 @@ class Task {
       'notificationTime': notificationTime != null 
           ? '${notificationTime!.hour}:${notificationTime!.minute}'
           : null,
+      'steps': steps.map((step) => step.toJson()).toList(),
     };
   }
 
@@ -42,6 +48,7 @@ class Task {
       hasNotification: json['hasNotification'],
       lastCompleted: DateTime.parse(json['lastCompleted']),
       nextDue: DateTime.parse(json['nextDue']),
+      isCompleted: json['isCompleted'] ?? false,
       color: Color(json['color'] ?? Colors.blue.value),
       notificationTime: json['notificationTime'] != null 
           ? TimeOfDay(
@@ -49,6 +56,26 @@ class Task {
               minute: int.parse((json['notificationTime'] as String).split(':')[1]),
             )
           : null,
-    )..isCompleted = json['isCompleted'] ?? false;
+      steps: (json['steps'] as List?)
+          ?.map((step) => TaskStep.fromJson(step))
+          .toList() ?? [],
+    );
+  }
+
+  TaskStep? get currentStep {
+    for (var step in steps) {
+      final current = step.findCurrentStep();
+      if (current != null) return current;
+    }
+    return null;
+  }
+
+  void setCurrentStep(TaskStep newCurrentStep) {
+    // First, unset the current step in the entire hierarchy
+    for (var step in steps) {
+      step.unsetCurrentStep();
+    }
+    // Set the new current step
+    newCurrentStep.isCurrent = true;
   }
 }

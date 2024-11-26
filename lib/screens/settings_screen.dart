@@ -24,78 +24,89 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  void _showColorPicker(BuildContext context, String colorType) async {
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    Color initialColor;
-    
-    // Get initial color based on type
-    switch (colorType) {
-      case 'dueToday':
-        initialColor = themeProvider.settings.taskDueTodayColor;
-        break;
-      case 'overdue':
-        initialColor = themeProvider.settings.taskOverdueColor;
-        break;
-      case 'future':
-        initialColor = themeProvider.settings.taskFutureColor;
-        break;
-      default:
-        initialColor = Colors.grey; // Default fallback color
-    }
-    
-    Color pickerColor = initialColor;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Pick a color'),
-        content: SingleChildScrollView(
-          child: ColorPicker(
-            pickerColor: pickerColor,
-            onColorChanged: (color) {
-              pickerColor = color;
-            },
-            portraitOnly: true,
-          ),
+  Widget _buildColorTile(String title, Color color, String type, BuildContext context) {
+    return ListTile(
+      title: Text(title),
+      trailing: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: color,
+          border: Border.all(color: Colors.grey),
+          borderRadius: BorderRadius.circular(4),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (colorType == 'dueToday') {
-                themeProvider.setTaskDueTodayColor(pickerColor);
-              } else if (colorType == 'overdue') {
-                themeProvider.setTaskOverdueColor(pickerColor);
-              } else if (colorType == 'future') {
-                themeProvider.setTaskFutureColor(pickerColor);
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Done'),
-          ),
-        ],
       ),
+      onTap: () {
+        final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+        Color initialColor = color;
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Choose $title'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ColorPicker(
+                    pickerColor: initialColor,
+                    onColorChanged: (color) {
+                      switch (type) {
+                        case 'dueToday':
+                          themeProvider.setTaskDueTodayColor(color);
+                          break;
+                        case 'overdue':
+                          themeProvider.setTaskOverdueColor(color);
+                          break;
+                        case 'future':
+                          themeProvider.setTaskFutureColor(color);
+                          break;
+                        case 'notesBackground':
+                          themeProvider.setNotesBackgroundColor(color);
+                          break;
+                        case 'notesBorder':
+                          themeProvider.setNotesCardBorderColor(color);
+                          break;
+                        case 'notesText':
+                          themeProvider.setNotesTextColor(color);
+                          break;
+                        case 'stepBorder':
+                          themeProvider.setStepCardBorderColor(color);
+                          break;
+                      }
+                    },
+                    pickerAreaHeightPercent: 0.7,
+                    displayThumbColor: true,
+                    enableAlpha: true,
+                    showLabel: true,
+                    portraitOnly: true,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Done'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildColorTile(String title, Color color, String colorType, BuildContext context) {
-    return ListTile(
+  Widget _buildColorSection(String title, String subtitle, List<Widget> colorTiles) {
+    return ExpansionTile(
       title: Text(title),
-      trailing: GestureDetector(
-        onTap: () => _showColorPicker(context, colorType),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.grey),
-          ),
+      subtitle: Text(subtitle),
+      initiallyExpanded: false,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 16.0),
+          child: Column(children: colorTiles),
         ),
-      ),
+      ],
     );
   }
 
@@ -113,15 +124,64 @@ class SettingsScreen extends StatelessWidget {
                 value: settings.enableDarkMode,
                 onChanged: (value) => themeProvider.toggleTheme(),
               ),
-              SwitchListTile(
-                title: const Text('Show Completed Tasks'),
-                value: settings.showCompletedTasks,
-                onChanged: (value) => themeProvider.toggleShowCompletedTasks(value),
+              const Divider(),
+              // Task visibility settings
+              const ListTile(
+                title: Text('Task Visibility'),
+                subtitle: Text('Control which tasks are visible'),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      title: const Text('Show Completed Tasks'),
+                      value: settings.showCompletedTasks,
+                      onChanged: (value) => themeProvider.toggleShowCompletedTasks(value),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Show Tasks Not Due Today'),
+                      value: settings.showNonTodayTasks,
+                      onChanged: (value) => themeProvider.toggleShowNonTodayTasks(value),
+                    ),
+                  ],
+                ),
               ),
               const Divider(),
-              _buildColorTile('Due Today Color', settings.taskDueTodayColor, 'dueToday', context),
-              _buildColorTile('Overdue Task Color', settings.taskOverdueColor, 'overdue', context),
-              _buildColorTile('Future Task Color', settings.taskFutureColor, 'future', context),
+              // Task warning settings
+              const ListTile(
+                title: Text('Task Warnings'),
+                subtitle: Text('Control warning indicators'),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: SwitchListTile(
+                  title: const Text('Show Warning for Overdue Tasks'),
+                  value: settings.showOverdueWarning,
+                  onChanged: (value) => themeProvider.toggleShowOverdueWarning(value),
+                ),
+              ),
+              const Divider(),
+              // Colors sections
+              _buildColorSection(
+                'Task Colors',
+                'Customize task appearance',
+                [
+                  _buildColorTile('Due Today Color', settings.taskDueTodayColor, 'dueToday', context),
+                  _buildColorTile('Overdue Task Color', settings.taskOverdueColor, 'overdue', context),
+                  _buildColorTile('Future Task Color', settings.taskFutureColor, 'future', context),
+                ],
+              ),
+              _buildColorSection(
+                'Notes & Steps Colors',
+                'Customize notes and steps appearance',
+                [
+                  _buildColorTile('Background Color', settings.notesBackgroundColor, 'notesBackground', context),
+                  _buildColorTile('Border Color', settings.notesCardBorderColor, 'notesBorder', context),
+                  _buildColorTile('Text Color', settings.notesTextColor, 'notesText', context),
+                  _buildColorTile('Step Border Color', settings.stepCardBorderColor, 'stepBorder', context),
+                ],
+              ),
               const Divider(),
               ListTile(
                 title: const Text('Default Reminder Time'),

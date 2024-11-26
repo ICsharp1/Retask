@@ -1,217 +1,168 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:provider/provider.dart';
-import 'task_provider.dart';
-
-class AppSettings {
-  static const defaultTaskDueTodayColor = Color.fromARGB(255, 125, 12, 218);
-  static const defaultTaskOverdueColor = Color.fromARGB(255, 255, 17, 0);
-  static const defaultTaskFutureColor = Color.fromARGB(255, 3, 136, 244);
-  Color taskDueTodayColor;
-  Color taskOverdueColor;
-  Color taskFutureColor;
-  Color taskDueTodayTextColor;
-  Color taskOverdueTextColor;
-  Color taskFutureTextColor;
-  bool enableDarkMode;
-  bool showCompletedTasks;
-  int defaultReminderTime;
-  String defaultSortOrder;
-
-  AppSettings({
-    required this.taskDueTodayColor,
-    required this.taskOverdueColor,
-    required this.taskFutureColor,
-    required this.taskDueTodayTextColor,
-    required this.taskOverdueTextColor,
-    required this.taskFutureTextColor,
-    required this.enableDarkMode,
-    required this.showCompletedTasks,
-    required this.defaultReminderTime,
-    required this.defaultSortOrder,
-  });
-
-  AppSettings copyWith({
-    Color? taskDueTodayColor,
-    Color? taskOverdueColor,
-    Color? taskFutureColor,
-    Color? taskDueTodayTextColor,
-    Color? taskOverdueTextColor,
-    Color? taskFutureTextColor,
-    bool? enableDarkMode,
-    bool? showCompletedTasks,
-    int? defaultReminderTime,
-    String? defaultSortOrder,
-  }) {
-    return AppSettings(
-      taskDueTodayColor: taskDueTodayColor ?? this.taskDueTodayColor,
-      taskOverdueColor: taskOverdueColor ?? this.taskOverdueColor,
-      taskFutureColor: taskFutureColor ?? this.taskFutureColor,
-      taskDueTodayTextColor: taskDueTodayTextColor ?? this.taskDueTodayTextColor,
-      taskOverdueTextColor: taskOverdueTextColor ?? this.taskOverdueTextColor,
-      taskFutureTextColor: taskFutureTextColor ?? this.taskFutureTextColor,
-      enableDarkMode: enableDarkMode ?? this.enableDarkMode,
-      showCompletedTasks: showCompletedTasks ?? this.showCompletedTasks,
-      defaultReminderTime: defaultReminderTime ?? this.defaultReminderTime,
-      defaultSortOrder: defaultSortOrder ?? this.defaultSortOrder,
-    );
-  }
-}
+import '../models/app_settings.dart';
 
 class ThemeProvider with ChangeNotifier {
   final SharedPreferences prefs;
   late AppSettings _settings;
+  bool _isDarkMode = false;
 
-  ThemeProvider(this.prefs) {
-    _settings = AppSettings(
-      taskDueTodayColor: Color(prefs.getInt('taskDueTodayColor') ?? AppSettings.defaultTaskDueTodayColor.value),
-      taskOverdueColor: Color(prefs.getInt('taskOverdueColor') ?? AppSettings.defaultTaskOverdueColor.value),
-      taskFutureColor: Color(prefs.getInt('taskFutureColor') ?? AppSettings.defaultTaskFutureColor.value),
+  ThemeProvider(this.prefs);
+
+  Future<void> init() async {
+    _isDarkMode = prefs.getBool('isDarkMode') ?? false;
+    _settings = await _loadSettings();
+    notifyListeners();
+  }
+
+  Future<AppSettings> _loadSettings() async {
+    return AppSettings(
+      taskDueTodayColor: Color(prefs.getInt('taskDueTodayColor') ?? Colors.orange.value),
+      taskOverdueColor: Color(prefs.getInt('taskOverdueColor') ?? Colors.red.value),
+      taskFutureColor: Color(prefs.getInt('taskFutureColor') ?? Colors.blue.value),
       taskDueTodayTextColor: Color(prefs.getInt('taskDueTodayTextColor') ?? Colors.white.value),
       taskOverdueTextColor: Color(prefs.getInt('taskOverdueTextColor') ?? Colors.white.value),
       taskFutureTextColor: Color(prefs.getInt('taskFutureTextColor') ?? Colors.white.value),
-      enableDarkMode: prefs.getBool('isDarkMode') ?? true,
-      showCompletedTasks: prefs.getBool('showCompletedTasks') ?? true,
-      defaultReminderTime: prefs.getInt('defaultReminderTime') ?? 30,
+      notesBackgroundColor: Color(prefs.getInt('notesBackgroundColor') ?? const Color(0xFF424242).value),
+      notesCardBorderColor: Color(prefs.getInt('notesCardBorderColor') ?? Colors.grey.value),
+      notesTextColor: Color(prefs.getInt('notesTextColor') ?? Colors.white.value),
+      stepCardBorderColor: Color(prefs.getInt('stepCardBorderColor') ?? Colors.grey.value),
+      enableDarkMode: prefs.getBool('enableDarkMode') ?? false,
+      showCompletedTasks: prefs.getBool('showCompletedTasks') ?? false,
+      showOverdueWarning: prefs.getBool('showOverdueWarning') ?? false,
+      showNonTodayTasks: prefs.getBool('showNonTodayTasks') ?? true,
+      defaultReminderTime: prefs.getInt('defaultReminderTime') ?? 9,
       defaultSortOrder: prefs.getString('defaultSortOrder') ?? 'dueDate',
     );
   }
 
+  bool get isDarkMode => _isDarkMode;
+  bool get isDark => _isDarkMode; 
   AppSettings get settings => _settings;
-  set settings(AppSettings value) => _settings = value;
-  bool get isDarkMode => _settings.enableDarkMode;
 
-  ThemeData get theme => _settings.enableDarkMode ? _darkTheme : _lightTheme;
-
-  final _darkTheme = ThemeData(
-    brightness: Brightness.dark,
-    scaffoldBackgroundColor: const Color.fromARGB(255, 30, 30, 30),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Color.fromARGB(255, 40, 40, 40),
-    ),
-  );
-
-  final _lightTheme = ThemeData(
-    brightness: Brightness.light,
-    scaffoldBackgroundColor: Colors.white,
-  );
-
-  Color get cardColor => isDarkMode ? Colors.grey[800]! : Colors.white;
-  Color get cardTextColor => isDarkMode ? Colors.white : Colors.black;
-
-  void toggleTheme() {
-    _settings.enableDarkMode = !_settings.enableDarkMode;
-    prefs.setBool('isDarkMode', _settings.enableDarkMode);
+  Future<void> toggleTheme() async {
+    _isDarkMode = !_isDarkMode;
+    _settings = _settings.copyWith(enableDarkMode: _isDarkMode);
+    await prefs.setBool('enableDarkMode', _isDarkMode);
     notifyListeners();
   }
 
-  void updateTaskColor(String colorType, Color color, BuildContext context) async {
-    // Get current tasks that match the color type
-    final taskProvider = Provider.of<TaskProvider>(context, listen: false);
-    final tasks = taskProvider.tasks.where((task) {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      
-      switch (colorType) {
-        case 'dueToday':
-          return task.nextDue.day == today.day && !task.isCompleted;
-        case 'overdue':
-          return task.nextDue.isBefore(today) && !task.isCompleted;
-        case 'future':
-          return task.nextDue.isAfter(today) && !task.isCompleted;
-        default:
-          return false;
-      }
-    }).toList();
-
-    // Update theme setting
-    switch (colorType) {
-      case 'dueToday':
-        _settings.taskDueTodayColor = color;
-        prefs.setInt('taskDueTodayColor', color.value);
-      case 'overdue':
-        _settings.taskOverdueColor = color;
-        prefs.setInt('taskOverdueColor', color.value);
-      case 'future':
-        _settings.taskFutureColor = color;
-        prefs.setInt('taskFutureColor', color.value);
-    }
+  Future<void> toggleShowCompletedTasks(bool value) async {
+    _settings = _settings.copyWith(showCompletedTasks: value);
+    await prefs.setBool('showCompletedTasks', value);
     notifyListeners();
   }
 
-  void toggleShowCompletedTasks(bool value) {
-    settings.showCompletedTasks = value;
+  Future<void> toggleShowOverdueWarning(bool value) async {
+    _settings = _settings.copyWith(showOverdueWarning: value);
+    await prefs.setBool('showOverdueWarning', value);
     notifyListeners();
   }
 
-  void setCardColor(String type, Color color) {
-    switch (type) {
-      case 'overdue':
-        _settings.taskOverdueColor = color;
-        prefs.setInt('taskOverdueColor', color.value);
-      case 'dueToday':
-        _settings.taskDueTodayColor = color;
-        prefs.setInt('taskDueTodayColor', color.value);
-      case 'future':
-        _settings.taskFutureColor = color;
-        prefs.setInt('taskFutureColor', color.value);
-    }
+  Future<void> toggleShowNonTodayTasks(bool value) async {
+    _settings = _settings.copyWith(showNonTodayTasks: value);
+    await prefs.setBool('showNonTodayTasks', value);
     notifyListeners();
   }
 
-  void setDefaultReminderTime(int minutes) {
-    _settings.defaultReminderTime = minutes;
-    prefs.setInt('defaultReminderTime', minutes);
+  Future<void> setDefaultReminderTime(int minutes) async {
+    _settings = _settings.copyWith(defaultReminderTime: minutes);
+    await prefs.setInt('defaultReminderTime', minutes);
     notifyListeners();
   }
 
-  void setTaskDueTodayColor(Color color) {
-    settings = settings.copyWith(taskDueTodayColor: color);
+  Future<void> setTaskDueTodayColor(Color color) async {
+    _settings = _settings.copyWith(taskDueTodayColor: color);
+    await prefs.setInt('taskDueTodayColor', color.value);
     notifyListeners();
   }
 
-  void setTaskOverdueColor(Color color) {
-    settings = settings.copyWith(taskOverdueColor: color);
+  Future<void> setTaskOverdueColor(Color color) async {
+    _settings = _settings.copyWith(taskOverdueColor: color);
+    await prefs.setInt('taskOverdueColor', color.value);
     notifyListeners();
   }
 
-  void setTaskFutureColor(Color color) {
-    settings = settings.copyWith(taskFutureColor: color);
+  Future<void> setTaskFutureColor(Color color) async {
+    _settings = _settings.copyWith(taskFutureColor: color);
+    await prefs.setInt('taskFutureColor', color.value);
     notifyListeners();
   }
 
-  void resetSettings() {
-    _settings = AppSettings(
+  Future<void> setStepCardBorderColor(Color color) async {
+    _settings = _settings.copyWith(stepCardBorderColor: color);
+    await prefs.setInt('stepCardBorderColor', color.value);
+    notifyListeners();
+  }
+
+  Future<void> setNotesBackgroundColor(Color color) async {
+    _settings = _settings.copyWith(notesBackgroundColor: color);
+    await prefs.setInt('notesBackgroundColor', color.value);
+    notifyListeners();
+  }
+
+  Future<void> setNotesCardBorderColor(Color color) async {
+    _settings = _settings.copyWith(notesCardBorderColor: color);
+    await prefs.setInt('notesCardBorderColor', color.value);
+    notifyListeners();
+  }
+
+  Future<void> setNotesTextColor(Color color) async {
+    _settings = _settings.copyWith(notesTextColor: color);
+    await prefs.setInt('notesTextColor', color.value);
+    notifyListeners();
+  }
+
+  Future<void> resetColors() async {
+    _settings = _settings.copyWith(
       taskDueTodayColor: Colors.orange,
       taskOverdueColor: Colors.red,
       taskFutureColor: Colors.blue,
       taskDueTodayTextColor: Colors.white,
       taskOverdueTextColor: Colors.white,
       taskFutureTextColor: Colors.white,
-      enableDarkMode: true,
-      showCompletedTasks: true,
-      defaultReminderTime: 30,
-      defaultSortOrder: 'dueDate',
+      notesBackgroundColor: const Color(0xFF424242),
+      notesCardBorderColor: Colors.grey,
+      notesTextColor: Colors.white,
+      stepCardBorderColor: Colors.grey,
     );
-    
-    // Save reset values to SharedPreferences
-    prefs.setInt('taskDueTodayColor', Colors.orange.value);
-    prefs.setInt('taskOverdueColor', Colors.red.value);
-    prefs.setInt('taskFutureColor', Colors.blue.value);
-    prefs.setInt('defaultReminderTime', 30);
-    
+    await prefs.setInt('notesBackgroundColor', _settings.notesBackgroundColor.value);
+    await prefs.setInt('notesTextColor', _settings.notesTextColor.value);
     notifyListeners();
   }
 
-  void resetColors() {
-    _settings.taskDueTodayColor = AppSettings.defaultTaskDueTodayColor;
-    _settings.taskOverdueColor = AppSettings.defaultTaskOverdueColor;
-    _settings.taskFutureColor = AppSettings.defaultTaskFutureColor;
-    
-    prefs.setInt('taskDueTodayColor', AppSettings.defaultTaskDueTodayColor.value);
-    prefs.setInt('taskOverdueColor', AppSettings.defaultTaskOverdueColor.value);
-    prefs.setInt('taskFutureColor', AppSettings.defaultTaskFutureColor.value);
-    
+  Future<void> resetSettings() async {
+    _settings = AppSettings();
+    _isDarkMode = _settings.enableDarkMode;
+    await prefs.clear();
     notifyListeners();
   }
-} 
+
+  ThemeData get currentTheme {
+    return ThemeData(
+      brightness: _settings.enableDarkMode ? Brightness.dark : Brightness.light,
+      scaffoldBackgroundColor: _settings.notesBackgroundColor,
+      cardColor: _settings.notesBackgroundColor,
+      colorScheme: ColorScheme(
+        brightness: _settings.enableDarkMode ? Brightness.dark : Brightness.light,
+        primary: _settings.taskDueTodayColor,
+        onPrimary: _settings.taskDueTodayTextColor,
+        secondary: _settings.taskFutureColor,
+        onSecondary: _settings.taskFutureTextColor,
+        error: _settings.taskOverdueColor,
+        onError: _settings.taskOverdueTextColor,
+        background: _settings.notesBackgroundColor,
+        onBackground: _settings.notesTextColor,
+        surface: _settings.notesBackgroundColor,
+        onSurface: _settings.notesTextColor,
+      ),
+      textTheme: TextTheme(
+        bodyLarge: TextStyle(color: _settings.notesTextColor),
+        bodyMedium: TextStyle(color: _settings.notesTextColor),
+        titleLarge: TextStyle(color: _settings.notesTextColor),
+        titleMedium: TextStyle(color: _settings.notesTextColor),
+        titleSmall: TextStyle(color: _settings.notesTextColor),
+      ),
+    );
+  }
+}
